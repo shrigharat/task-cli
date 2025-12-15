@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -58,5 +59,20 @@ func main() {
 		CompletedOn: time.Time{},
 	}
 
-	fmt.Println("Task to be added:", newTask)
+	fp, err := os.Create("tasks.json")
+	if err != nil {
+		fmt.Printf("Error: Failed to open file: %s\n", err)
+		os.Exit(1)
+	}
+	defer fp.Close()
+
+	encoder := json.NewEncoder(fp)
+	encoder.SetIndent("", "  ")
+	err = encoder.Encode(newTask)
+	if err != nil {
+		fmt.Printf("Error: Failed to encode task: %s\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Task added successfully")
 }
