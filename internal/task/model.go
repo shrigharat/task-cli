@@ -61,6 +61,10 @@ func (p TaskPriority) String() string {
 	return priorityValueToLabelMap[p]
 }
 
+func GetStatusLabel(status TaskStatus) string {
+	return statusValueToLabelMap[status]
+}
+
 func ParsePriority(label string) (TaskPriority, error) {
 	priorityValue, ok := priorityLabelToValueMap[label]
 	if !ok {
@@ -68,6 +72,10 @@ func ParsePriority(label string) (TaskPriority, error) {
 	}
 
 	return priorityValue, nil
+}
+
+func GetPriorityLabel(priority TaskPriority) string {
+	return priorityValueToLabelMap[priority]
 }
 
 func CreateTask(id int, title string, priority TaskPriority) Task {

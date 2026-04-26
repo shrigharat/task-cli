@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"task-cli/internal/task"
+	"text/tabwriter"
 	"time"
 )
 
@@ -56,7 +57,11 @@ func writeTasksToFile(tasks []task.Task) {
 	if err != nil {
 		exitWithError(fmt.Sprintf("Error marshalling tasks: %s", err))
 	}
-	os.WriteFile("tasks.json", jsonData, 0644)
+	err = os.WriteFile("tasks.json", jsonData, 0644)
+	if err != nil {
+		exitWithError(fmt.Sprintf("Error writing to tasks file: %s", err))
+	}
+	fmt.Println("Tasks saved successfully")
 }
 
 func getMaxTaskId(tasks []task.Task) int {
@@ -119,6 +124,7 @@ func main() {
 		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), tasks)
 		newTaskTitle = validateRequiredArgument(newTaskTitle, "New task title")
 		tasks[taskId].Title = newTaskTitle
+		tasks[taskId].UpdatedAt = time.Now()
 		fmt.Printf("Task %d updated successfully\n", tasks[taskId].Id)
 	case "delete":
 		checkMinimumArguments(args, 2)
@@ -165,9 +171,14 @@ func main() {
 		if len(filteredTasks) == 0 {
 			fmt.Println("There are no tasks matching the filter")
 		} else {
+			tabWriter := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fmt.Fprintf(tabWriter, "ID\tTitle\tStatus\tPriority\n")
 			for _, currentTask := range filteredTasks {
-				fmt.Printf("%d. %s\n", currentTask.Id, currentTask.Title)
+				priorityLabel := task.GetPriorityLabel(currentTask.Priority)
+				statusLabel := task.GetStatusLabel(currentTask.Status)
+				fmt.Fprintf(tabWriter, "%d.\t%s\t%s\t%s\n", currentTask.Id, currentTask.Title, statusLabel, priorityLabel)
 			}
+			tabWriter.Flush()
 		}
 	case "complete":
 		checkMinimumArguments(args, 2)
