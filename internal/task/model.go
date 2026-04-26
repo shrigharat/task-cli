@@ -15,19 +15,19 @@ const (
 )
 
 const (
-	StatusPending TaskStatus = iota
+	StatusTodo TaskStatus = iota
 	StatusInProgress
 	StatusCompleted
 )
 
 var statusValueToLabelMap = map[TaskStatus]string{
-	StatusPending:    "pending",
+	StatusTodo:       "todo",
 	StatusInProgress: "in-progress",
 	StatusCompleted:  "completed",
 }
 
 var statusLabelToValueMap = map[string]TaskStatus{
-	"pending":     StatusPending,
+	"todo":        StatusTodo,
 	"in-progress": StatusInProgress,
 	"completed":   StatusCompleted,
 }
@@ -75,7 +75,7 @@ func CreateTask(id uint8, title string, priority TaskPriority) Task {
 		Id:          uint8(id),
 		Title:       title,
 		Priority:    priority,
-		Status:      StatusPending,
+		Status:      StatusTodo,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 		DueDate:     time.Time{},

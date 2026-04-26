@@ -43,6 +43,12 @@ func validateTaskId(taskIdString string, tasksLength int) int {
 	return taskId
 }
 
+func checkMinimumArguments(args []string, minimumArguments int) {
+	if len(args) < minimumArguments {
+		exitWithError(fmt.Sprintf("Please provide at least %d arguments", minimumArguments))
+	}
+}
+
 func main() {
 	args := os.Args[1:]
 	tasks := addDefaultTasks(make([]task.Task, 0))
@@ -56,12 +62,14 @@ func main() {
 
 	switch operation {
 	case "add":
+		checkMinimumArguments(args, 2)
 		dataArgument := args[1]
 		taskTitle := validateRequiredArgument(dataArgument, "Title")
 		newTask := task.CreateTask(uint8(len(tasks)+1), taskTitle, task.LowPriority)
 		tasks = append(tasks, newTask)
 		fmt.Printf("Task \"%s\" added successfully\n", taskTitle)
 	case "update":
+		checkMinimumArguments(args, 3)
 		dataArgument := args[1]
 		newTaskTitle := args[2]
 		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), len(tasks))
@@ -69,59 +77,68 @@ func main() {
 		tasks[taskId-1].Title = newTaskTitle
 		fmt.Printf("Task \"%s\" updated successfully\n", newTaskTitle)
 	case "delete":
+		checkMinimumArguments(args, 2)
 		dataArgument := args[1]
 		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), len(tasks))
 		tasks = append(tasks[0:taskId-1], tasks[taskId:]...)
 		fmt.Printf("Task %d deleted successfully\n", taskId)
 	case "list":
-		filter := args[1]
-		filterStatus, err := task.ParseStatus(filter)
-		if err != nil {
-			exitWithError(fmt.Sprintf("Invalid status filter: %s", filter))
-		}
+		checkMinimumArguments(args, 1)
 		filteredTasks := make([]task.Task, 0)
-		switch filterStatus {
-		case task.StatusPending:
-			for _, currentTask := range tasks {
-				if currentTask.Status == task.StatusPending {
-					filteredTasks = append(filteredTasks, currentTask)
-				}
-			}
-		case task.StatusInProgress:
-			for _, currentTask := range tasks {
-				if currentTask.Status == task.StatusInProgress {
-					filteredTasks = append(filteredTasks, currentTask)
-				}
-			}
-		case task.StatusCompleted:
-			for _, currentTask := range tasks {
-				if currentTask.Status == task.StatusCompleted {
-					filteredTasks = append(filteredTasks, currentTask)
-				}
-			}
-		default:
+		if len(args) <= 1 {
 			filteredTasks = tasks
+		} else {
+			filter := args[1]
+			filterStatus, err := task.ParseStatus(filter)
+			if err != nil {
+				exitWithError(fmt.Sprintf("Invalid status filter: %s", filter))
+			}
+			switch filterStatus {
+			case task.StatusTodo:
+				for _, currentTask := range tasks {
+					if currentTask.Status == task.StatusTodo {
+						filteredTasks = append(filteredTasks, currentTask)
+					}
+				}
+			case task.StatusInProgress:
+				for _, currentTask := range tasks {
+					if currentTask.Status == task.StatusInProgress {
+						filteredTasks = append(filteredTasks, currentTask)
+					}
+				}
+			case task.StatusCompleted:
+				for _, currentTask := range tasks {
+					if currentTask.Status == task.StatusCompleted {
+						filteredTasks = append(filteredTasks, currentTask)
+					}
+				}
+			default:
+				filteredTasks = tasks
+			}
 		}
 
-		for index, currentTask := range tasks {
+		for index, currentTask := range filteredTasks {
 			fmt.Printf("%d. %s\n", index+1, currentTask.Title)
 		}
 	case "complete":
+		checkMinimumArguments(args, 2)
 		dataArgument := args[1]
 		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), len(tasks))
 		tasks[taskId-1].Status = task.StatusCompleted
 		tasks[taskId-1].CompletedOn = time.Now()
 		fmt.Printf("Task %d completed successfully\n", taskId)
 	case "mark-in-progress":
+		checkMinimumArguments(args, 2)
 		dataArgument := args[1]
 		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), len(tasks))
 		tasks[taskId-1].Status = task.StatusInProgress
 		tasks[taskId-1].UpdatedAt = time.Now()
 		fmt.Printf("Task %d marked as in progress successfully\n", taskId)
 	case "mark-pending":
+		checkMinimumArguments(args, 2)
 		dataArgument := args[1]
 		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), len(tasks))
-		tasks[taskId-1].Status = task.StatusPending
+		tasks[taskId-1].Status = task.StatusTodo
 		tasks[taskId-1].UpdatedAt = time.Now()
 		fmt.Printf("Task %d marked as pending successfully\n", taskId)
 	default:
