@@ -46,12 +46,12 @@ func ParsePriority(label string) (TaskPriority, error) {
 }
 
 type Task struct {
-	Id          string
-	Title       string
-	Priority    TaskPriority
-	Status      TaskStatus
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DueDate     time.Time
-	CompletedOn time.Time
+	Id          uint8        `json:"id"`
+	Title       string       `json:"title"`
+	Priority    TaskPriority `json:"priority"`
+	Status      TaskStatus   `json:"status"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
+	DueDate     time.Time    `json:"due_date"`
+	CompletedOn time.Time    `json:"completed_on"`
 }
