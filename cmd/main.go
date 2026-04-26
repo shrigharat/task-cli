@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -14,14 +16,6 @@ func exitWithError(message string) {
 	os.Exit(1)
 }
 
-func addDefaultTasks(tasks []task.Task) []task.Task {
-	tasks = append(tasks, task.CreateTask(1, "Buy groceries", task.MediumPriority))
-	tasks = append(tasks, task.CreateTask(2, "Finish report", task.HighPriority))
-	tasks = append(tasks, task.CreateTask(3, "Call Alice", task.LowPriority))
-
-	return tasks
-}
-
 func validateRequiredArgument(argData string, argName string) string {
 	processedData := strings.TrimSpace(argData)
 	if processedData == "" {
@@ -31,16 +25,21 @@ func validateRequiredArgument(argData string, argName string) string {
 	return processedData
 }
 
-func validateTaskId(taskIdString string, tasksLength int) int {
+func validateTaskId(taskIdString string, tasks []task.Task) int {
 	taskId, err := strconv.Atoi(taskIdString)
 	if err != nil {
 		exitWithError("Invalid task ID")
 	}
-	if taskId < 1 || taskId > tasksLength {
+	if taskId <= 0 {
 		exitWithError("Invalid task ID")
 	}
 
-	return taskId
+	taskIndex := getTaskIndexById(tasks, taskId)
+	if taskIndex == -1 {
+		exitWithError("Invalid task ID")
+	}
+
+	return taskIndex
 }
 
 func checkMinimumArguments(args []string, minimumArguments int) {
@@ -49,9 +48,53 @@ func checkMinimumArguments(args []string, minimumArguments int) {
 	}
 }
 
+func writeTasksToFile(tasks []task.Task) {
+	newFileData := make(map[string][]task.Task)
+	newFileData["tasks"] = tasks
+
+	jsonData, err := json.MarshalIndent(newFileData, "", "\t")
+	if err != nil {
+		exitWithError(fmt.Sprintf("Error marshalling tasks: %s", err))
+	}
+	os.WriteFile("tasks.json", jsonData, 0644)
+}
+
+func getMaxTaskId(tasks []task.Task) int {
+	maxId := float64(0)
+	for _, t := range tasks {
+		maxId = math.Max(float64(maxId), float64(t.Id))
+	}
+	return int(maxId)
+}
+
+func getTaskIndexById(tasks []task.Task, taskId int) int {
+	for index, t := range tasks {
+		if t.Id == taskId {
+			return index
+		}
+	}
+	return -1
+}
+
 func main() {
 	args := os.Args[1:]
-	tasks := addDefaultTasks(make([]task.Task, 0))
+	fileBytes, err := os.ReadFile("tasks.json")
+	if err != nil {
+		if !os.IsNotExist(err) {
+			exitWithError(fmt.Sprintf("Error reading from tasks file: %s", err))
+		}
+	}
+
+	tasks := make([]task.Task, 0)
+
+	if len(fileBytes) > 0 {
+		existingFileData := make(map[string][]task.Task)
+		err = json.Unmarshal(fileBytes, &existingFileData)
+		if err != nil {
+			exitWithError(fmt.Sprintf("Error unmarshalling tasks: %s", err))
+		}
+		tasks = existingFileData["tasks"]
+	}
 
 	if len(args) == 0 {
 		fmt.Println("Error: Please provide an operation")
@@ -64,24 +107,26 @@ func main() {
 	case "add":
 		checkMinimumArguments(args, 2)
 		dataArgument := args[1]
+		newTaskId := getMaxTaskId(tasks) + 1
 		taskTitle := validateRequiredArgument(dataArgument, "Title")
-		newTask := task.CreateTask(uint8(len(tasks)+1), taskTitle, task.LowPriority)
+		newTask := task.CreateTask(newTaskId, taskTitle, task.LowPriority)
 		tasks = append(tasks, newTask)
 		fmt.Printf("Task \"%s\" added successfully\n", taskTitle)
 	case "update":
 		checkMinimumArguments(args, 3)
 		dataArgument := args[1]
 		newTaskTitle := args[2]
-		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), len(tasks))
+		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), tasks)
 		newTaskTitle = validateRequiredArgument(newTaskTitle, "New task title")
-		tasks[taskId-1].Title = newTaskTitle
-		fmt.Printf("Task \"%s\" updated successfully\n", newTaskTitle)
+		tasks[taskId].Title = newTaskTitle
+		fmt.Printf("Task %d updated successfully\n", tasks[taskId].Id)
 	case "delete":
 		checkMinimumArguments(args, 2)
 		dataArgument := args[1]
-		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), len(tasks))
-		tasks = append(tasks[0:taskId-1], tasks[taskId:]...)
-		fmt.Printf("Task %d deleted successfully\n", taskId)
+		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), tasks)
+		originalTask := tasks[taskId]
+		tasks = append(tasks[0:taskId], tasks[taskId+1:]...)
+		fmt.Printf("Task %d deleted successfully\n", originalTask.Id)
 	case "list":
 		checkMinimumArguments(args, 1)
 		filteredTasks := make([]task.Task, 0)
@@ -117,32 +162,40 @@ func main() {
 			}
 		}
 
-		for index, currentTask := range filteredTasks {
-			fmt.Printf("%d. %s\n", index+1, currentTask.Title)
+		if len(filteredTasks) == 0 {
+			fmt.Println("There are no tasks matching the filter")
+		} else {
+			for _, currentTask := range filteredTasks {
+				fmt.Printf("%d. %s\n", currentTask.Id, currentTask.Title)
+			}
 		}
 	case "complete":
 		checkMinimumArguments(args, 2)
 		dataArgument := args[1]
-		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), len(tasks))
-		tasks[taskId-1].Status = task.StatusCompleted
-		tasks[taskId-1].CompletedOn = time.Now()
-		fmt.Printf("Task %d completed successfully\n", taskId)
+		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), tasks)
+		tasks[taskId].Status = task.StatusCompleted
+		tasks[taskId].CompletedOn = time.Now()
+		fmt.Printf("Task %d completed successfully\n", tasks[taskId].Id)
 	case "mark-in-progress":
 		checkMinimumArguments(args, 2)
 		dataArgument := args[1]
-		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), len(tasks))
-		tasks[taskId-1].Status = task.StatusInProgress
-		tasks[taskId-1].UpdatedAt = time.Now()
-		fmt.Printf("Task %d marked as in progress successfully\n", taskId)
+		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), tasks)
+		tasks[taskId].Status = task.StatusInProgress
+		tasks[taskId].UpdatedAt = time.Now()
+		fmt.Printf("Task %d marked as in progress successfully\n", tasks[taskId].Id)
 	case "mark-pending":
 		checkMinimumArguments(args, 2)
 		dataArgument := args[1]
-		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), len(tasks))
-		tasks[taskId-1].Status = task.StatusTodo
-		tasks[taskId-1].UpdatedAt = time.Now()
-		fmt.Printf("Task %d marked as pending successfully\n", taskId)
+		taskId := validateTaskId(validateRequiredArgument(dataArgument, "Task ID"), tasks)
+		tasks[taskId].Status = task.StatusTodo
+		tasks[taskId].UpdatedAt = time.Now()
+		fmt.Printf("Task %d marked as pending successfully\n", tasks[taskId].Id)
 	default:
 		fmt.Println("Error: Invalid operation")
 		os.Exit(1)
+	}
+
+	if operation != "list" {
+		writeTasksToFile(tasks)
 	}
 }

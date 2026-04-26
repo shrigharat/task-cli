@@ -70,9 +70,9 @@ func ParsePriority(label string) (TaskPriority, error) {
 	return priorityValue, nil
 }
 
-func CreateTask(id uint8, title string, priority TaskPriority) Task {
+func CreateTask(id int, title string, priority TaskPriority) Task {
 	return Task{
-		Id:          uint8(id),
+		Id:          id,
 		Title:       title,
 		Priority:    priority,
 		Status:      StatusTodo,
@@ -84,7 +84,7 @@ func CreateTask(id uint8, title string, priority TaskPriority) Task {
 }
 
 type Task struct {
-	Id          uint8        `json:"id"`
+	Id          int          `json:"id"`
 	Title       string       `json:"title"`
 	Priority    TaskPriority `json:"priority"`
 	Status      TaskStatus   `json:"status"`
