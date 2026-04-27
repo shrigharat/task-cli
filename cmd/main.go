@@ -81,6 +81,17 @@ func getTaskIndexById(tasks []task.Task, taskId int) int {
 	return -1
 }
 
+func printTasksInTable(tasks []task.Task) {
+	tabWriter := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(tabWriter, "ID\tTitle\tStatus\tPriority\n")
+	for _, currentTask := range tasks {
+		priorityLabel := task.GetPriorityLabel(currentTask.Priority)
+		statusLabel := task.GetStatusLabel(currentTask.Status)
+		fmt.Fprintf(tabWriter, "%d.\t%s\t%s\t%s\n", currentTask.Id, currentTask.Title, statusLabel, priorityLabel)
+	}
+	tabWriter.Flush()
+}
+
 func main() {
 	args := os.Args[1:]
 	fileBytes, err := os.ReadFile("tasks.json")
@@ -171,14 +182,7 @@ func main() {
 		if len(filteredTasks) == 0 {
 			fmt.Println("There are no tasks matching the filter")
 		} else {
-			tabWriter := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintf(tabWriter, "ID\tTitle\tStatus\tPriority\n")
-			for _, currentTask := range filteredTasks {
-				priorityLabel := task.GetPriorityLabel(currentTask.Priority)
-				statusLabel := task.GetStatusLabel(currentTask.Status)
-				fmt.Fprintf(tabWriter, "%d.\t%s\t%s\t%s\n", currentTask.Id, currentTask.Title, statusLabel, priorityLabel)
-			}
-			tabWriter.Flush()
+			printTasksInTable(filteredTasks)
 		}
 	case "complete":
 		checkMinimumArguments(args, 2)
